@@ -92,7 +92,16 @@ app.event('message', async ({ event, client, logger }) => {
       const userIds = extractUserIdsFromTopic(topic);
       const domain = await getWorkspaceDomain(client);
 
+      // Fetch pending tasks from Redis
       const pendingTasks = await getPendingTasks();
+
+      // Skip sending messages if there are no pending tasks
+      if (pendingTasks.length === 0) {
+        logger.info("No pending tasks, skipping message to user.");
+        return;
+      }
+
+      // Prepare pending tasks list
       const pendingThreads = pendingTasks
         .map((data, index) => {
           const formattedTs = data.threadId.replace('.', ''); // Remove the dot in the timestamp
@@ -101,9 +110,7 @@ app.event('message', async ({ event, client, logger }) => {
         })
         .join('\n');
 
-      const pendingMessage = pendingThreads
-        ? `Here are the pending tasks:\n${pendingThreads}`
-        : `There are currently no pending tasks.`;
+      const pendingMessage = `Here are the pending tasks:\n${pendingThreads}`;
 
       const instructions = `
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -124,6 +131,7 @@ ${pendingMessage}
     logger.error(`Error processing topic change: ${error.message}`);
   }
 });
+
 
 // Handle @list_pending
 app.message(async ({ message, say, logger, client }) => {
